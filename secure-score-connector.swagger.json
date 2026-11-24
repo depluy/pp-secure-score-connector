@@ -1,0 +1,784 @@
+{
+  "swagger": "2.0",
+  "info": {
+    "title": "Microsoft Secure Score",
+    "description": "Reads Microsoft Secure Score snapshots and recommended-action (control) profiles from Microsoft Graph, and lets an analyst triage a control (assign, note, mark ignored / third party / reviewed).",
+    "version": "1.0"
+  },
+  "host": "graph.microsoft.com",
+  "basePath": "/v1.0",
+  "schemes": [
+    "https"
+  ],
+  "consumes": [
+    "application/json"
+  ],
+  "produces": [
+    "application/json"
+  ],
+  "paths": {
+    "/security/secureScores": {
+      "get": {
+        "operationId": "ListSecureScores",
+        "summary": "List secure score snapshots",
+        "description": "Returns the daily Secure Score snapshots for the tenant, newest first. Each snapshot carries the current score, max score, per-control scores and comparative averages.",
+        "parameters": [
+          {
+            "name": "$top",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "default": 30,
+            "description": "Number of snapshots to return.",
+            "x-ms-summary": "Top",
+            "x-ms-visibility": "important"
+          },
+          {
+            "name": "$skip",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "description": "Number of snapshots to skip.",
+            "x-ms-summary": "Skip",
+            "x-ms-visibility": "advanced"
+          },
+          {
+            "name": "$filter",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "description": "OData filter, for example: createdDateTime ge 2026-01-01T00:00:00Z",
+            "x-ms-summary": "Filter",
+            "x-ms-visibility": "advanced"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/SecureScoreCollection"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/GraphError"
+            }
+          }
+        }
+      }
+    },
+    "/security/secureScores/{secureScoreId}": {
+      "get": {
+        "operationId": "GetSecureScore",
+        "summary": "Get a single secure score snapshot",
+        "description": "Returns one Secure Score snapshot by its id (format: {tenantId}_{yyyy-MM-dd}).",
+        "parameters": [
+          {
+            "name": "secureScoreId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Snapshot id, for example 00000001-0001-0001-0001-000000000001_2026-07-26",
+            "x-ms-summary": "Secure score id",
+            "x-ms-url-encoding": "single"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/SecureScore"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/GraphError"
+            }
+          }
+        }
+      }
+    },
+    "/security/secureScoreControlProfiles": {
+      "get": {
+        "operationId": "ListControlProfiles",
+        "summary": "List recommended actions (control profiles)",
+        "description": "Returns the catalogue of Secure Score recommended actions with their max score, rank, remediation guidance, threats addressed and current tenant triage state.",
+        "parameters": [
+          {
+            "name": "$top",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "default": 999,
+            "description": "Number of controls to return per page. Use a high value to avoid paging in the app.",
+            "x-ms-summary": "Top",
+            "x-ms-visibility": "important"
+          },
+          {
+            "name": "$skip",
+            "in": "query",
+            "required": false,
+            "type": "integer",
+            "description": "Number of controls to skip.",
+            "x-ms-summary": "Skip",
+            "x-ms-visibility": "advanced"
+          },
+          {
+            "name": "$filter",
+            "in": "query",
+            "required": false,
+            "type": "string",
+            "description": "OData filter, for example: controlCategory eq 'Identity'",
+            "x-ms-summary": "Filter",
+            "x-ms-visibility": "advanced"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/ControlProfileCollection"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/GraphError"
+            }
+          }
+        }
+      }
+    },
+    "/security/secureScoreControlProfiles/{controlId}": {
+      "get": {
+        "operationId": "GetControlProfile",
+        "summary": "Get a recommended action",
+        "description": "Returns a single control profile by its id, for example AdminMFA.",
+        "parameters": [
+          {
+            "name": "controlId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Control id, for example AdminMFA",
+            "x-ms-summary": "Control id",
+            "x-ms-url-encoding": "single"
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "OK",
+            "schema": {
+              "$ref": "#/definitions/ControlProfile"
+            }
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/GraphError"
+            }
+          }
+        }
+      },
+      "patch": {
+        "operationId": "UpdateControlProfile",
+        "summary": "Triage a recommended action",
+        "description": "Updates the analyst-editable fields on a control: who it is assigned to, the tenant note, and the control state (ignore, thirdParty, reviewed). Requires SecurityEvents.ReadWrite.All. vendorInformation is mandatory in the body.",
+        "parameters": [
+          {
+            "name": "controlId",
+            "in": "path",
+            "required": true,
+            "type": "string",
+            "description": "Control id, for example AdminMFA",
+            "x-ms-summary": "Control id",
+            "x-ms-url-encoding": "single"
+          },
+          {
+            "name": "Prefer",
+            "in": "header",
+            "required": false,
+            "type": "string",
+            "default": "return=representation",
+            "description": "Set to return=representation to get the updated object back instead of 204 No Content.",
+            "x-ms-summary": "Prefer",
+            "x-ms-visibility": "advanced"
+          },
+          {
+            "name": "body",
+            "in": "body",
+            "required": true,
+            "schema": {
+              "$ref": "#/definitions/ControlProfileUpdate"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "Updated (returned when Prefer: return=representation is sent)",
+            "schema": {
+              "$ref": "#/definitions/ControlProfile"
+            }
+          },
+          "204": {
+            "description": "No Content"
+          },
+          "default": {
+            "description": "Error",
+            "schema": {
+              "$ref": "#/definitions/GraphError"
+            }
+          }
+        }
+      }
+    }
+  },
+  "definitions": {
+    "SecureScoreCollection": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "array",
+          "title": "Secure scores",
+          "items": {
+            "$ref": "#/definitions/SecureScore"
+          }
+        },
+        "@odata.nextLink": {
+          "type": "string",
+          "title": "Next link",
+          "x-ms-summary": "Next link",
+          "x-ms-visibility": "advanced"
+        }
+      }
+    },
+    "SecureScore": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "Id",
+          "x-ms-summary": "Snapshot id"
+        },
+        "azureTenantId": {
+          "type": "string",
+          "title": "Tenant id",
+          "x-ms-summary": "Tenant id",
+          "x-ms-visibility": "advanced"
+        },
+        "createdDateTime": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Created",
+          "x-ms-summary": "Snapshot date"
+        },
+        "currentScore": {
+          "type": "number",
+          "format": "double",
+          "title": "Current score",
+          "x-ms-summary": "Current score"
+        },
+        "maxScore": {
+          "type": "number",
+          "format": "double",
+          "title": "Max score",
+          "x-ms-summary": "Max score"
+        },
+        "activeUserCount": {
+          "type": "integer",
+          "title": "Active users",
+          "x-ms-summary": "Active user count"
+        },
+        "licensedUserCount": {
+          "type": "integer",
+          "title": "Licensed users",
+          "x-ms-summary": "Licensed user count"
+        },
+        "enabledServices": {
+          "type": "array",
+          "title": "Enabled services",
+          "x-ms-summary": "Enabled services",
+          "items": {
+            "type": "string"
+          }
+        },
+        "averageComparativeScores": {
+          "type": "array",
+          "title": "Comparative averages",
+          "items": {
+            "$ref": "#/definitions/AverageComparativeScore"
+          }
+        },
+        "controlScores": {
+          "type": "array",
+          "title": "Control scores",
+          "items": {
+            "$ref": "#/definitions/ControlScore"
+          }
+        },
+        "vendorInformation": {
+          "$ref": "#/definitions/VendorInformation"
+        }
+      }
+    },
+    "AverageComparativeScore": {
+      "type": "object",
+      "properties": {
+        "basis": {
+          "type": "string",
+          "title": "Basis",
+          "x-ms-summary": "Comparison basis",
+          "description": "AllTenants, TotalSeats or IndustryTypes"
+        },
+        "averageScore": {
+          "type": "number",
+          "format": "double",
+          "title": "Average score",
+          "x-ms-summary": "Average score"
+        },
+        "identityScore": {
+          "type": "number",
+          "format": "double",
+          "x-ms-summary": "Identity average"
+        },
+        "identityScoreMax": {
+          "type": "number",
+          "format": "double",
+          "x-ms-summary": "Identity max"
+        },
+        "dataScore": {
+          "type": "number",
+          "format": "double",
+          "x-ms-summary": "Data average"
+        },
+        "dataScoreMax": {
+          "type": "number",
+          "format": "double",
+          "x-ms-summary": "Data max"
+        },
+        "deviceScore": {
+          "type": "number",
+          "format": "double",
+          "x-ms-summary": "Device average"
+        },
+        "deviceScoreMax": {
+          "type": "number",
+          "format": "double",
+          "x-ms-summary": "Device max"
+        },
+        "appsScore": {
+          "type": "number",
+          "format": "double",
+          "x-ms-summary": "Apps average"
+        },
+        "appsScoreMax": {
+          "type": "number",
+          "format": "double",
+          "x-ms-summary": "Apps max"
+        },
+        "infrastructureScore": {
+          "type": "number",
+          "format": "double",
+          "x-ms-summary": "Infrastructure average"
+        },
+        "infrastructureScoreMax": {
+          "type": "number",
+          "format": "double",
+          "x-ms-summary": "Infrastructure max"
+        },
+        "SeatSizeRangeLowerValue": {
+          "type": "string",
+          "x-ms-summary": "Seat range lower"
+        },
+        "SeatSizeRangeUpperValue": {
+          "type": "string",
+          "x-ms-summary": "Seat range upper"
+        }
+      }
+    },
+    "ControlScore": {
+      "type": "object",
+      "properties": {
+        "controlName": {
+          "type": "string",
+          "title": "Control name",
+          "x-ms-summary": "Control name"
+        },
+        "controlCategory": {
+          "type": "string",
+          "title": "Category",
+          "x-ms-summary": "Category"
+        },
+        "description": {
+          "type": "string",
+          "title": "Description",
+          "x-ms-summary": "Description"
+        },
+        "score": {
+          "type": "number",
+          "format": "double",
+          "title": "Score",
+          "x-ms-summary": "Score achieved"
+        },
+        "scoreInPercentage": {
+          "type": "number",
+          "format": "double",
+          "title": "Score percentage",
+          "x-ms-summary": "Score %"
+        },
+        "implementationStatus": {
+          "type": "string",
+          "title": "Implementation status",
+          "x-ms-summary": "Implementation status",
+          "description": "Human-readable status text. May contain HTML."
+        },
+        "lastSynced": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last synced",
+          "x-ms-summary": "Last synced"
+        },
+        "on": {
+          "type": "string",
+          "title": "On",
+          "x-ms-summary": "Enabled",
+          "description": "String, not boolean. Returns \"true\" / \"false\"."
+        },
+        "count": {
+          "type": "string",
+          "title": "Count",
+          "x-ms-summary": "Compliant count",
+          "description": "String, not integer."
+        },
+        "total": {
+          "type": "string",
+          "title": "Total",
+          "x-ms-summary": "Total in scope",
+          "description": "String, not integer."
+        }
+      }
+    },
+    "ControlProfileCollection": {
+      "type": "object",
+      "properties": {
+        "value": {
+          "type": "array",
+          "title": "Control profiles",
+          "items": {
+            "$ref": "#/definitions/ControlProfile"
+          }
+        },
+        "@odata.nextLink": {
+          "type": "string",
+          "title": "Next link",
+          "x-ms-summary": "Next link",
+          "x-ms-visibility": "advanced"
+        }
+      }
+    },
+    "ControlProfile": {
+      "type": "object",
+      "properties": {
+        "id": {
+          "type": "string",
+          "title": "Id",
+          "x-ms-summary": "Control id"
+        },
+        "title": {
+          "type": "string",
+          "title": "Title",
+          "x-ms-summary": "Title"
+        },
+        "controlCategory": {
+          "type": "string",
+          "title": "Category",
+          "x-ms-summary": "Category",
+          "description": "Identity, Data, Device, Apps or Infrastructure"
+        },
+        "service": {
+          "type": "string",
+          "title": "Service",
+          "x-ms-summary": "Service"
+        },
+        "actionType": {
+          "type": "string",
+          "title": "Action type",
+          "x-ms-summary": "Action type",
+          "description": "Config, Review or Behavior"
+        },
+        "actionUrl": {
+          "type": "string",
+          "title": "Action URL",
+          "x-ms-summary": "Action URL"
+        },
+        "maxScore": {
+          "type": "number",
+          "format": "double",
+          "title": "Max score",
+          "x-ms-summary": "Max score"
+        },
+        "rank": {
+          "type": "integer",
+          "title": "Rank",
+          "x-ms-summary": "Rank"
+        },
+        "tier": {
+          "type": "string",
+          "title": "Tier",
+          "x-ms-summary": "Tier"
+        },
+        "implementationCost": {
+          "type": "string",
+          "title": "Implementation cost",
+          "x-ms-summary": "Implementation cost",
+          "description": "low, moderate or high"
+        },
+        "userImpact": {
+          "type": "string",
+          "title": "User impact",
+          "x-ms-summary": "User impact"
+        },
+        "remediation": {
+          "type": "string",
+          "title": "Remediation",
+          "x-ms-summary": "Remediation"
+        },
+        "remediationImpact": {
+          "type": "string",
+          "title": "Remediation impact",
+          "x-ms-summary": "Remediation impact"
+        },
+        "threats": {
+          "type": "array",
+          "title": "Threats",
+          "x-ms-summary": "Threats addressed",
+          "items": {
+            "type": "string"
+          }
+        },
+        "deprecated": {
+          "type": "boolean",
+          "title": "Deprecated",
+          "x-ms-summary": "Deprecated"
+        },
+        "lastModifiedDateTime": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Last modified",
+          "x-ms-summary": "Last modified"
+        },
+        "azureTenantId": {
+          "type": "string",
+          "title": "Tenant id",
+          "x-ms-summary": "Tenant id",
+          "x-ms-visibility": "advanced"
+        },
+        "controlStateUpdates": {
+          "type": "array",
+          "title": "Control state updates",
+          "items": {
+            "$ref": "#/definitions/ControlStateUpdate"
+          }
+        },
+        "vendorInformation": {
+          "$ref": "#/definitions/VendorInformation"
+        }
+      }
+    },
+    "ControlStateUpdate": {
+      "type": "object",
+      "properties": {
+        "assignedTo": {
+          "type": "string",
+          "title": "Assigned to",
+          "x-ms-summary": "Assigned to"
+        },
+        "comment": {
+          "type": "string",
+          "title": "Comment",
+          "x-ms-summary": "Comment"
+        },
+        "state": {
+          "type": "string",
+          "title": "State",
+          "x-ms-summary": "State",
+          "description": "Default, Ignored, ThirdParty or Reviewed",
+          "enum": [
+            "Default",
+            "Ignored",
+            "ThirdParty",
+            "Reviewed"
+          ]
+        },
+        "updatedBy": {
+          "type": "string",
+          "title": "Updated by",
+          "x-ms-summary": "Updated by"
+        },
+        "updatedDateTime": {
+          "type": "string",
+          "format": "date-time",
+          "title": "Updated",
+          "x-ms-summary": "Updated on"
+        }
+      }
+    },
+    "ControlProfileUpdate": {
+      "type": "object",
+      "required": [
+        "vendorInformation"
+      ],
+      "properties": {
+        "assignedTo": {
+          "type": "string",
+          "title": "Assigned to",
+          "x-ms-summary": "Assign to (analyst)"
+        },
+        "tenantNote": {
+          "type": "string",
+          "title": "Tenant note",
+          "x-ms-summary": "Analyst note"
+        },
+        "controlStateUpdates": {
+          "type": "array",
+          "title": "Control state updates",
+          "items": {
+            "$ref": "#/definitions/ControlStateUpdate"
+          }
+        },
+        "vendorInformation": {
+          "$ref": "#/definitions/VendorInformationRequired"
+        }
+      }
+    },
+    "VendorInformation": {
+      "type": "object",
+      "properties": {
+        "provider": {
+          "type": "string",
+          "title": "Provider",
+          "x-ms-summary": "Provider"
+        },
+        "providerVersion": {
+          "type": "string",
+          "title": "Provider version",
+          "x-ms-summary": "Provider version",
+          "x-ms-visibility": "advanced"
+        },
+        "subProvider": {
+          "type": "string",
+          "title": "Sub provider",
+          "x-ms-summary": "Sub provider",
+          "x-ms-visibility": "advanced"
+        },
+        "vendor": {
+          "type": "string",
+          "title": "Vendor",
+          "x-ms-summary": "Vendor"
+        }
+      }
+    },
+    "VendorInformationRequired": {
+      "type": "object",
+      "required": [
+        "provider",
+        "vendor"
+      ],
+      "properties": {
+        "provider": {
+          "type": "string",
+          "title": "Provider",
+          "default": "SecureScore",
+          "x-ms-summary": "Provider"
+        },
+        "vendor": {
+          "type": "string",
+          "title": "Vendor",
+          "default": "Microsoft",
+          "x-ms-summary": "Vendor"
+        }
+      }
+    },
+    "GraphError": {
+      "type": "object",
+      "properties": {
+        "error": {
+          "type": "object",
+          "properties": {
+            "code": {
+              "type": "string",
+              "title": "Code",
+              "x-ms-summary": "Error code"
+            },
+            "message": {
+              "type": "string",
+              "title": "Message",
+              "x-ms-summary": "Error message"
+            }
+          }
+        }
+      }
+    }
+  },
+  "parameters": {},
+  "responses": {},
+  "security": [
+    {
+      "oauth2-auth": [
+        "SecurityEvents.Read.All",
+        "SecurityEvents.ReadWrite.All",
+        "offline_access"
+      ]
+    },
+    {
+      "oAuthClientCredentials": [
+        "SecurityEvents.Read.All",
+        "SecurityEvents.ReadWrite.All",
+        "offline_access"
+      ]
+    },
+    {
+      "certOauth": [
+        "SecurityEvents.Read.All",
+        "SecurityEvents.ReadWrite.All",
+        "offline_access"
+      ]
+    }
+  ],
+  "tags": [],
+  "securityDefinitions": {
+    "oauth2-auth": {
+      "type": "oauth2",
+      "flow": "accessCode",
+      "tokenUrl": "https://login.windows.net/common/oauth2/authorize",
+      "scopes": {
+        "SecurityEvents.Read.All": "SecurityEvents.Read.All",
+        "SecurityEvents.ReadWrite.All": "SecurityEvents.ReadWrite.All",
+        "offline_access": "offline_access"
+      },
+      "authorizationUrl": "https://login.microsoftonline.com/common/oauth2/authorize"
+    },
+    "oAuthClientCredentials": {
+      "type": "oauth2",
+      "flow": "application",
+      "tokenUrl": "https://login.windows.net/common/oauth2/authorize",
+      "scopes": {
+        "SecurityEvents.Read.All": "SecurityEvents.Read.All",
+        "SecurityEvents.ReadWrite.All": "SecurityEvents.ReadWrite.All",
+        "offline_access": "offline_access"
+      }
+    },
+    "certOauth": {
+      "type": "oauth2",
+      "flow": "application",
+      "tokenUrl": "https://login.windows.net/common/oauth2/authorize",
+      "scopes": {
+        "SecurityEvents.Read.All": "SecurityEvents.Read.All",
+        "SecurityEvents.ReadWrite.All": "SecurityEvents.ReadWrite.All",
+        "offline_access": "offline_access"
+      }
+    }
+  }
+}
